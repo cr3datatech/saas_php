@@ -1,156 +1,123 @@
+<?php
+// Load .env so we can pass the publishable key to the frontend
+if (!defined('VENDOR_AUTOLOAD_LOADED') && file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+    define('VENDOR_AUTOLOAD_LOADED', true);
+}
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+$clerkPublishableKey = $_ENV['NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY'] ?? '';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business Idea Generator</title>
+    <title>IdeaGen Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- fetch-event-source: more robust SSE client (equivalent to @microsoft/fetch-event-source in saas) -->
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@microsoft/fetch-event-source@2.0.1/lib/esm/index.js"></script>
-    <style>
-        .markdown-content h1 {
-            font-size: 2em;
-            font-weight: bold;
-            margin: 0.67em 0;
-        }
-        .markdown-content h2 {
-            font-size: 1.5em;
-            font-weight: bold;
-            margin: 0.83em 0;
-        }
-        .markdown-content h3 {
-            font-size: 1.17em;
-            font-weight: bold;
-            margin: 1em 0;
-        }
-        .markdown-content h4 {
-            font-size: 1em;
-            font-weight: bold;
-            margin: 1.33em 0;
-        }
-        .markdown-content h5 {
-            font-size: 0.83em;
-            font-weight: bold;
-            margin: 1.67em 0;
-        }
-        .markdown-content h6 {
-            font-size: 0.67em;
-            font-weight: bold;
-            margin: 2.33em 0;
-        }
-        .markdown-content p {
-            margin: 1em 0;
-        }
-        .markdown-content ul {
-            list-style-type: disc;
-            padding-left: 2em;
-            margin: 1em 0;
-        }
-        .markdown-content ol {
-            list-style-type: decimal;
-            padding-left: 2em;
-            margin: 1em 0;
-        }
-        .markdown-content li {
-            margin: 0.25em 0;
-        }
-        .markdown-content strong {
-            font-weight: bold;
-        }
-        .markdown-content em {
-            font-style: italic;
-        }
-        .markdown-content hr {
-            border: 0;
-            border-top: 1px solid #e5e7eb;
-            margin: 2em 0;
-        }
-        .markdown-content br {
-            display: block;
-            content: "";
-            margin-top: 0.5em;
-        }
-    </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
     <main class="container mx-auto px-4 py-12">
-        <!-- Header -->
-        <header class="text-center mb-12">
-            <h1 class="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-                Business Idea Generator
-            </h1>
-            <p class="text-gray-600 dark:text-gray-400 text-lg">
-                AI-powered innovation at your fingertips
-            </p>
-        </header>
 
-        <!-- Content Card -->
-        <div class="max-w-3xl mx-auto">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 backdrop-blur-lg bg-opacity-95">
-                <div id="loading" class="flex items-center justify-center py-12">
-                    <div class="animate-pulse text-gray-400">
-                        Generating your business idea...
-                    </div>
-                </div>
-                <div id="content" class="markdown-content text-gray-700 dark:text-gray-300" style="display: none;"></div>
+        <!-- Navigation -->
+        <nav class="flex justify-between items-center mb-12">
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-200">IdeaGen Pro</h1>
+            <div id="nav-auth">
+                <!-- Populated by Clerk.js below -->
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <div class="text-center py-24">
+            <h2 class="text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6">
+                Generate Your Next<br>Big Business Idea
+            </h2>
+            <p class="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+                Harness the power of AI to discover innovative business opportunities tailored for the AI agent economy
+            </p>
+
+            <!-- Pricing Preview -->
+            <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl p-6 max-w-sm mx-auto mb-8">
+                <h3 class="text-2xl font-bold mb-2">Premium Subscription</h3>
+                <p class="text-4xl font-bold text-blue-600 mb-2">$10<span class="text-lg text-gray-600">/month</span></p>
+                <ul class="text-left text-gray-600 dark:text-gray-400 mb-6">
+                    <li class="mb-2">✓ Unlimited idea generation</li>
+                    <li class="mb-2">✓ Advanced AI models</li>
+                    <li class="mb-2">✓ Priority support</li>
+                </ul>
+            </div>
+
+            <div id="hero-cta">
+                <!-- Populated by Clerk.js below -->
             </div>
         </div>
     </main>
 
-    <script type="module">
-        // Use @microsoft/fetch-event-source for more robust SSE handling.
-        // Advantages over native EventSource:
-        //   - Automatically retries on failure with backoff
-        //   - Supports POST requests and custom headers (needed when Clerk auth is added)
-        //   - Better error handling and connection management
-        import { fetchEventSource } from 'https://cdn.jsdelivr.net/npm/@microsoft/fetch-event-source@2.0.1/lib/esm/index.js';
+    <!-- Clerk.js -->
+    <script>
+        window.__clerk_publishable_key = <?= json_encode($clerkPublishableKey) ?>;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js" type="text/javascript"></script>
+    <script>
+        const navAuth = document.getElementById('nav-auth');
+        const heroCta = document.getElementById('hero-cta');
 
-        let buffer = '';
-        const loadingEl = document.getElementById('loading');
-        const contentEl = document.getElementById('content');
+        if (!window.__clerk_publishable_key) {
+            navAuth.innerHTML = '<span class="text-red-500 text-sm">Config error: missing publishable key</span>';
+        } else if (typeof window.Clerk === 'undefined') {
+            navAuth.innerHTML = '<span class="text-red-500 text-sm">Clerk.js failed to load — check console</span>';
+        } else {
+            // v5: window.Clerk is a singleton instance, not a constructor
+            const clerk = window.Clerk;
 
-        // Configure marked.js for GFM + line breaks (equivalent to remarkGfm + remarkBreaks)
-        marked.setOptions({ breaks: true, gfm: true });
+            // showSignInButtons is defined here so it closes over `clerk`
+            function showSignInButtons() {
+                navAuth.innerHTML = `
+                    <button id="sign-in-nav"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                        Sign In
+                    </button>
+                `;
+                document.getElementById('sign-in-nav').addEventListener('click', () => clerk.openSignIn());
 
-        function renderMarkdown() {
-            contentEl.innerHTML = marked.parse(buffer);
-        }
+                heroCta.innerHTML = `
+                    <button id="sign-in-cta"
+                        class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 px-8 rounded-xl text-lg transition-all transform hover:scale-105">
+                        Start Your Free Trial
+                    </button>
+                `;
+                document.getElementById('sign-in-cta').addEventListener('click', () => clerk.openSignIn());
+            }
 
-        const controller = new AbortController();
+            clerk.load({ publishableKey: window.__clerk_publishable_key }).then(() => {
+                if (clerk.user) {
+                    // Signed in — show "Go to App" + user button
+                    navAuth.innerHTML = `
+                        <div id="user-btn-mount" class="flex items-center gap-4">
+                            <a href="product.php"
+                               class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                                Go to App
+                            </a>
+                        </div>
+                    `;
+                    clerk.mountUserButton(document.getElementById('user-btn-mount'), { showName: true });
 
-        fetchEventSource('api.php', {
-            method: 'GET',
-            signal: controller.signal,
-
-            onopen(response) {
-                if (response.ok) {
-                    loadingEl.style.display = 'none';
-                    contentEl.style.display = 'block';
+                    heroCta.innerHTML = `
+                        <a href="product.php">
+                            <button class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 px-8 rounded-xl text-lg transition-all transform hover:scale-105">
+                                Access Premium Features
+                            </button>
+                        </a>
+                    `;
                 } else {
-                    throw new Error(`Server returned ${response.status}`);
+                    showSignInButtons();
                 }
-            },
-
-            onmessage(event) {
-                buffer += event.data;
-                renderMarkdown();
-            },
-
-            onerror(err) {
-                console.error('SSE error:', err);
-                loadingEl.innerHTML = '<div class="text-red-500">Error: Connection failed. Please refresh the page.</div>';
-                controller.abort();
-                throw err; // Prevent auto-retry on fatal errors
-            },
-
-            onclose() {
-                // Stream closed cleanly by server - nothing to do
-            },
-        });
-
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => controller.abort());
+            }).catch((err) => {
+                console.error('Clerk load error:', err);
+                navAuth.innerHTML = `<span class="text-red-500 text-sm">Auth error: ${err.message}</span>`;
+                showSignInButtons();
+            });
+        }
     </script>
 </body>
 </html>

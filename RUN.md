@@ -1,4 +1,4 @@
-# How to Run the PHP Application
+# How to Run the PHP Application Locally
 
 ## Quick Start
 
@@ -11,105 +11,127 @@ cd saas_php
 composer install
 ```
 
-This will install:
-- `openai-php/client` - OpenAI API client
-- `vlucas/phpdotenv` - For loading .env file
-- Required HTTP client dependencies
+This installs:
+- `openai-php/client` — OpenAI streaming API client
+- `vlucas/phpdotenv` — loads `.env` files
+- `firebase/php-jwt` — Clerk JWT signature verification (uses JWKS)
+- `clerkinc/backend-php` — Clerk backend SDK
+- HTTP client dependencies
 
-### Step 2: Verify .env File
+### Step 2: Verify the `.env` file
 
-Make sure you have a `.env` file in the `saas_php` directory with your OpenAI API key:
+`saas_php/.env` must contain all four keys:
 
 ```
-OPENAI_API_KEY=your-api-key-here
+OPENAI_API_KEY=...
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_JWKS_URL=https://safe-shark-85.clerk.accounts.dev/.well-known/jwks.json
 ```
 
-(You already have this file set up!)
+(Already configured — just make sure it's there.)
 
-### Step 3: Start the PHP Development Server
+### Step 3: Allow `localhost:8000` in the Clerk Dashboard
 
-Run the built-in PHP server **with opcache disabled** (required to prevent class redeclaration errors):
+Because Clerk validates redirect URLs you **must** add `http://localhost:8000` once:
+
+1. Go to [https://dashboard.clerk.com](https://dashboard.clerk.com)
+2. Select your application (safe-shark-85)
+3. **Configure → Domains** → add `http://localhost:8000`
+4. **Configure → Paths** → ensure Sign-in / Sign-up paths are set (defaults are fine)
+
+### Step 4: Start the PHP Development Server
+
+Run the built-in PHP server with opcache disabled (prevents class-redeclaration errors):
 
 ```bash
 php -d opcache.enable=0 -S localhost:8000
 ```
 
-This starts a development server on `http://localhost:8000`
-
-**Important:** The `-d opcache.enable=0` flag is necessary because PHP's opcode cache can cause "Cannot redeclare class" errors with the built-in server.
-
-### Step 4: Open in Browser
-
-Open your browser and navigate to:
+### Step 5: Open in Browser
 
 ```
 http://localhost:8000
 ```
 
-The page will automatically connect to the API and start streaming the business idea!
+- **Not signed in** → landing page with Sign In button
+- **Signed in, no plan** → pricing table (subscribe to unlock)
+- **Signed in + subscribed** → idea generator streams AI content
 
-## Alternative: Using Apache/Nginx
+---
 
-If you prefer using Apache or Nginx:
+## How It Mirrors `saas` (Next.js + FastAPI)
 
-### Apache
-1. Point DocumentRoot to the `saas_php` directory
-2. Ensure mod_rewrite is enabled
-3. Access via your configured domain/port
+| `saas`                         | `saas_php`                          |
+|-------------------------------|--------------------------------------|
+| `pages/index.tsx`             | `index.php` (landing + Clerk.js)     |
+| `pages/product.tsx`           | `product.php` (protected page)       |
+| `api/index.py` (FastAPI)      | `api.php` (PHP SSE endpoint)         |
+| `@clerk/nextjs` `<Protect>`   | Clerk.js `clerk.session` JWT decode  |
+| `<PricingTable />`            | `clerk.mountPricingTable()`          |
+| `<UserButton />`              | `clerk.mountUserButton()`            |
+| `fastapi_clerk_auth`          | `firebase/php-jwt` + Clerk JWKS      |
+| `gpt-5.1` / `gpt-5-nano`      | `gpt-4.1` / `gpt-4o-mini`           |
 
-### Nginx
-1. Configure PHP-FPM
-2. Point root to the `saas_php` directory
-3. Ensure PHP files are processed correctly
+---
 
 ## Troubleshooting
 
-### "Class 'Dotenv\Dotenv' not found"
-- Run `composer install` to install dependencies
-- Make sure `vendor/autoload.php` exists
+### "Missing or invalid Authorization header" from `api.php`
 
-### "OPENAI_API_KEY environment variable is not set"
-- Check that `.env` file exists in `saas_php` directory
-- Verify the file contains `OPENAI_API_KEY=your-key`
-- Make sure there are no extra spaces or quotes
+The JWT was not forwarded. Ensure `product.php` is calling `api.php` with:
 
-### SSE Not Working / No Streaming
-- Check PHP version: `php -v` (needs 8.2+)
-- Verify output buffering is disabled (already handled in api.php)
-- Check browser console for errors
-- Ensure `api.php` is accessible at `http://localhost:8000/api.php`
-
-### Port Already in Use
-If port 8000 is busy, use a different port:
-```bash
-php -d opcache.enable=0 -S localhost:8080
+```js
+headers: { 'Authorization': `Bearer ${token}` }
 ```
-Then access at `http://localhost:8080`
 
-### Opcache Issues
-If you see "Cannot redeclare class" errors, make sure to start the server with opcache disabled:
+Check the browser Network tab — the request to `api.php` should have an `Authorization` header.
+
+### "JWT verification failed"
+
+- Confirm `CLERK_JWKS_URL` is correct in `.env`
+- Confirm the Clerk session is still valid (not expired)
+- Confirm the PHP server can reach the internet (`file_get_contents` to the JWKS URL)
+
+### "Class 'Dotenv\Dotenv' not found"
+
+Run `composer install` to install all dependencies.
+
+### "Cannot redeclare class OpenAI"
+
+Always start the server with:
+
 ```bash
 php -d opcache.enable=0 -S localhost:8000
 ```
-This is required because PHP's opcode cache can persist class definitions between requests in the built-in server.
+
+### Maximum execution time exceeded
+
+The `set_time_limit(0)` in `api.php` disables the limit. If you still see it, check
+that PHP's `max_execution_time` ini is not being overridden by a `php.ini` file.
+
+### Clerk sign-in modal does not redirect back
+
+Add `http://localhost:8000` to the **Allowed redirect URLs** list in the Clerk Dashboard.
+
+### Port already in use
+
+```bash
+php -d opcache.enable=0 -S localhost:8080
+```
+
+Then open `http://localhost:8080`.
+
+---
 
 ## File Structure
 
 ```
 saas_php/
-├── index.php          # Main page (open this in browser)
-├── api.php            # API endpoint (called automatically)
-├── .env               # Your API key (already configured)
-├── composer.json      # Dependencies
-└── vendor/            # Installed packages (after composer install)
+├── index.php        # Landing page — Clerk.js sign-in, pricing preview
+├── product.php      # Protected page — JWT check, plan check, SSE idea generator
+├── api.php          # API endpoint — JWT verify, model select, OpenAI stream
+├── .env             # API keys (OPENAI + Clerk)
+├── composer.json    # PHP dependencies
+└── vendor/          # Installed packages (after composer install)
 ```
-
-## What Happens When You Run It
-
-1. **Open `index.php`** → HTML page loads
-2. **JavaScript connects** → EventSource connects to `api.php`
-3. **PHP API runs** → `api.php` calls OpenAI API
-4. **Streaming starts** → Chunks stream via SSE
-5. **Content appears** → Markdown renders in real-time
-
-That's it! The application should work immediately after `composer install`.
