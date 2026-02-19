@@ -6,6 +6,8 @@
     <title>Business Idea Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- fetch-event-source: more robust SSE client (equivalent to @microsoft/fetch-event-source in saas) -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@microsoft/fetch-event-source@2.0.1/lib/esm/index.js"></script>
     <style>
         .markdown-content h1 {
             font-size: 2em;
@@ -96,51 +98,59 @@
         </div>
     </main>
 
-    <script>
-        // Initialize state
+    <script type="module">
+        // Use @microsoft/fetch-event-source for more robust SSE handling.
+        // Advantages over native EventSource:
+        //   - Automatically retries on failure with backoff
+        //   - Supports POST requests and custom headers (needed when Clerk auth is added)
+        //   - Better error handling and connection management
+        import { fetchEventSource } from 'https://cdn.jsdelivr.net/npm/@microsoft/fetch-event-source@2.0.1/lib/esm/index.js';
+
         let buffer = '';
         const loadingEl = document.getElementById('loading');
         const contentEl = document.getElementById('content');
 
-        // Create EventSource connection to PHP API
-        const evt = new EventSource('api.php');
+        // Configure marked.js for GFM + line breaks (equivalent to remarkGfm + remarkBreaks)
+        marked.setOptions({ breaks: true, gfm: true });
 
-        // Handle incoming SSE messages
-        evt.onmessage = function(e) {
-            // Hide loading indicator on first message
-            if (loadingEl.style.display !== 'none') {
-                loadingEl.style.display = 'none';
-                contentEl.style.display = 'block';
-            }
+        function renderMarkdown() {
+            contentEl.innerHTML = marked.parse(buffer);
+        }
 
-            // Accumulate chunks in buffer
-            buffer += e.data;
-            
-            // Render markdown using marked.js
-            if (typeof marked !== 'undefined') {
-                // Configure marked to handle breaks
-                marked.setOptions({
-                    breaks: true,
-                    gfm: true
-                });
-                contentEl.innerHTML = marked.parse(buffer);
-            } else {
-                // Fallback: just display as plain text if marked.js fails to load
-                contentEl.textContent = buffer;
-            }
-        };
+        const controller = new AbortController();
 
-        // Handle errors
-        evt.onerror = function() {
-            console.error('SSE error, closing');
-            evt.close();
-            loadingEl.innerHTML = '<div class="text-red-500">Error: Connection failed. Please refresh the page.</div>';
-        };
+        fetchEventSource('api.php', {
+            method: 'GET',
+            signal: controller.signal,
+
+            onopen(response) {
+                if (response.ok) {
+                    loadingEl.style.display = 'none';
+                    contentEl.style.display = 'block';
+                } else {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+            },
+
+            onmessage(event) {
+                buffer += event.data;
+                renderMarkdown();
+            },
+
+            onerror(err) {
+                console.error('SSE error:', err);
+                loadingEl.innerHTML = '<div class="text-red-500">Error: Connection failed. Please refresh the page.</div>';
+                controller.abort();
+                throw err; // Prevent auto-retry on fatal errors
+            },
+
+            onclose() {
+                // Stream closed cleanly by server - nothing to do
+            },
+        });
 
         // Cleanup on page unload
-        window.addEventListener('beforeunload', function() {
-            evt.close();
-        });
+        window.addEventListener('beforeunload', () => controller.abort());
     </script>
 </body>
 </html>

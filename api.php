@@ -5,6 +5,9 @@
  * Handles Server-Sent Events (SSE) streaming from OpenAI
  */
 
+// No time limit - streaming responses can take a while
+set_time_limit(0);
+
 // Disable output buffering for streaming
 if (ob_get_level() > 0) {
     ob_end_clean();

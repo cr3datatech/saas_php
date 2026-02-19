@@ -184,3 +184,54 @@ contentEl.innerHTML = marked.parse(buffer);
 3. Start PHP server: `php -S localhost:8000`
 4. Test the application
 5. Deploy to your PHP hosting environment
+
+---
+
+## Installed PHP Packages
+
+Install command:
+```bash
+composer require openai-php/client symfony/http-client nyholm/psr7 vlucas/phpdotenv
+```
+
+Or simply:
+```bash
+composer install
+```
+(using `composer.json` which was already configured)
+
+### Direct Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `openai-php/client` | 0.19.0 | Official community PHP SDK for OpenAI API |
+| `symfony/http-client` | 8.0.5 | PSR-18 HTTP client (required by openai-php) |
+| `nyholm/psr7` | 1.8.2 | PSR-7 HTTP message implementation (required by openai-php) |
+| `vlucas/phpdotenv` | 5.6.3 | Loads `OPENAI_API_KEY` from `.env` file |
+
+### Transitive Dependencies (auto-installed)
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `graham-campbell/result-type` | 1.1.4 | Result type used by phpdotenv |
+| `php-http/discovery` | 1.20.0 | Auto-discovers PSR-17/18 implementations |
+| `php-http/multipart-stream-builder` | 1.4.2 | Multipart stream support for HTTP client |
+| `phpoption/phpoption` | 1.9.5 | Option type used by phpdotenv |
+| `psr/container` | 2.0.2 | PSR-11 container interface |
+| `psr/http-client` | 1.0.3 | PSR-18 HTTP client interface |
+| `psr/http-factory` | 1.1.0 | PSR-17 HTTP factory interface |
+| `psr/http-message` | 2.0 | PSR-7 HTTP message interface |
+| `psr/log` | 3.0.2 | PSR-3 logging interface |
+| `symfony/deprecation-contracts` | 3.6.0 | Symfony deprecation helpers |
+| `symfony/http-client-contracts` | 3.6.0 | Symfony HTTP client interfaces |
+| `symfony/polyfill-ctype` | 1.33.0 | Backport of PHP ctype functions |
+| `symfony/polyfill-mbstring` | 1.33.0 | Backport of PHP mbstring functions |
+| `symfony/polyfill-php80` | 1.33.0 | Backport of PHP 8.0 features |
+| `symfony/service-contracts` | 3.6.1 | Symfony service abstractions |
+
+### Frontend Libraries (loaded via CDN, no install required)
+
+| Library | Purpose |
+|---------|---------|
+| Tailwind CSS (CDN) | Utility-first CSS styling |
+| marked.js (CDN) | Markdown → HTML rendering (replaces ReactMarkdown) |
